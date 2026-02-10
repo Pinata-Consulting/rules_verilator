@@ -138,10 +138,7 @@ def _verilator_cc_library(ctx):
     args.add("--prefix", prefix)
     if ctx.attr.trace:
         args.add("--trace")
-    if ctx.attr.systemc:
-        args.add("--sc")
-    else:
-        args.add("--cc")
+    args.add("--cc")
 
     args.add_all(all_includes, format_each = "-I%s")
     args.add_all(verilog_files, expand_directories = True, map_each = _only_sv)
@@ -190,7 +187,7 @@ def _verilator_cc_library(ctx):
         defines = defines,
         runfiles = runfiles,
         includes = [verilator_output_hpp.path],
-        deps = (verilator_toolchain.deps + [verilator_toolchain.systemc]) if ctx.attr.systemc else verilator_toolchain.deps,
+        deps = verilator_toolchain.deps,
     )
 
 verilator_cc_library = rule(
@@ -208,10 +205,6 @@ verilator_cc_library = rule(
         "module_top": attr.string(
             doc = "The name of the verilog module to verilate.",
             mandatory = True,
-        ),
-        "systemc": attr.bool(
-            doc = "Generate SystemC code.",
-            default = False,
         ),
         "trace": attr.bool(
             doc = "Enable tracing for Verilator",
@@ -254,7 +247,6 @@ def _verilator_toolchain_impl(ctx):
 
     return [platform_common.ToolchainInfo(
         verilator = ctx.executable.verilator,
-        systemc = ctx.attr.systemc,
         deps = ctx.attr.deps,
         extra_vopts = ctx.attr.extra_vopts,
         all_files = all_files,
@@ -274,11 +266,6 @@ verilator_toolchain = rule(
         ),
         "extra_vopts": attr.string_list(
             doc = "Extra flags to pass to Verilator compile actions.",
-        ),
-        "systemc": attr.label(
-            doc = "SystemC dependency to link into downstream targets.",
-            providers = [CcInfo],
-            mandatory = True,
         ),
         "verilator": attr.label(
             doc = "The Verilator binary.",
