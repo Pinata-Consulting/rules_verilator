@@ -149,15 +149,28 @@ def _verilator_cc_library(ctx):
     if verilator_toolchain._avoid_nondeterministic_outputs:
         env["VERILATOR_AVOID_NONDETERMINISTIC_OUTPUTS"] = "1"
 
+    # Workaround to enable more fine grained scheduling.
+    # See comment in verilator_worker.py for details.
+    execution_requirements = {}
+    executable_tool = ctx.executable._process_wrapper
+
+    if ctx.attr._use_worker[BuildSettingInfo].value:
+        execution_requirements = {
+            "supports-workers": "1",
+            "requires-worker-protocol": "json",
+        }
+        executable_tool = ctx.executable._worker_wrapper
+
     ctx.actions.run(
         arguments = [args],
         mnemonic = "VerilatorCompile",
-        executable = ctx.executable._process_wrapper,
+        executable = executable_tool,
         tools = verilator_toolchain.all_files,
         inputs = verilog_files,
         outputs = [verilator_output],
         progress_message = "[Verilator] Compiling {}".format(ctx.label),
         env = env,
+        execution_requirements = execution_requirements,
     )
 
     verilator_output_cpp = ctx.actions.declare_directory(ctx.label.name + "_cpp")
@@ -229,6 +242,17 @@ verilator_cc_library = rule(
             executable = True,
             cfg = "exec",
             default = Label("//verilator/private:verilator_process_wrapper"),
+        ),
+
+        # For throttling verilator jobs without having to throttle the
+        # CC++ compile actions
+        "_use_worker": attr.label(
+            default = Label("//verilator:use_worker"),
+        ),
+        "_worker_wrapper": attr.label(
+            default = Label("//verilator:verilator_worker"),
+            executable = True,
+            cfg = "exec",
         ),
     },
     provides = [

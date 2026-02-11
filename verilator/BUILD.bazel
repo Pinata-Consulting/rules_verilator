@@ -40,3 +40,15 @@ toolchain(
     toolchain_type = ":toolchain_type",
     visibility = ["//visibility:public"],
 )
+
+bool_flag(
+    name = "use_worker",
+    build_setting_default = False,
+    visibility = ["//visibility:public"],
+)
+
+py_binary(
+    name = "verilator_worker",
+    srcs = ["verilator_worker.py"],
+    visibility = ["//visibility:public"],
+)
